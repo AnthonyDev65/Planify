@@ -272,10 +272,10 @@ if (process.env.NODE_ENV === 'production') {
 app.listen(PORT, '0.0.0.0', () => {
   console.log('');
   console.log('=================================');
-  console.log('🚀 Server running on http://0.0.0.0:${PORT}');
+  console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
   console.log('📊 Database: planify.db');
   console.log('🔔 Push notifications enabled');
-  console.log('🌍 Environment: ${process.env.NODE_ENV || 'development'}');
+  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log('=================================');
   console.log('');
 }).on('error', (err) => {
