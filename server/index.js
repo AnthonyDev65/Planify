@@ -263,8 +263,13 @@ app.post('/api/notifications/test', async (req, res) => {
 
 // Servir el frontend para todas las rutas no API (SPA)
 if (process.env.NODE_ENV === 'production') {
-  app.get('/*', (req, res) => {
-    res.sendFile(join(__dirname, '..', 'dist', 'index.html'));
+  app.use((req, res, next) => {
+    // Si la ruta no es de la API, servir el index.html
+    if (!req.path.startsWith('/api')) {
+      res.sendFile(join(__dirname, '..', 'dist', 'index.html'));
+    } else {
+      next();
+    }
   });
 }
 
