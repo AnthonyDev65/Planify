@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  planify:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: planify
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - VITE_API_URL=/api
+      - VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
+      - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}
+    volumes:
+      - planify-data:/app/data
+    restart: unless-stopped
+    networks:
+      - traefik
+    labels:
+      # Habilitar Traefik
+      - "traefik.enable=true"
+      
+      # Configuración HTTP
+      - "traefik.http.routers.planify.rule=Host(`planify.tudominio.com`)"
+      - "traefik.http.routers.planify.entrypoints=web"
+      - "traefik.http.routers.planify.middlewares=redirect-to-https"
+      
+      # Configuración HTTPS
+      - "traefik.http.routers.planify-secure.rule=Host(`planify.tudominio.com`)"
+      - "traefik.http.routers.planify-secure.entrypoints=websecure"
+      - "traefik.http.routers.planify-secure.tls=true"
+      - "traefik.http.routers.planify-secure.tls.certresolver=letsencrypt"
+      
+      # Puerto del contenedor
+      - "traefik.http.services.planify.loadbalancer.server.port=3001"
+      
+      # Middleware para redirección HTTPS
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.permanent=true"
+
+volumes:
+  planify-data:
+    driver: local
+
+networks:
+  traefik:
+    external: true
