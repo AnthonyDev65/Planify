@@ -1,0 +1,14 @@
+node_modules
+npm-debug.log
+.git
+.gitignore
+.env
+.env.local
+dist
+android
+.vscode
+*.db
+*.db-shm
+*.db-wal
+README.md
+.DS_Store
