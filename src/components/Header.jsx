@@ -1,11 +1,14 @@
 import { useContext, useState } from 'react';
 import { Bell, Settings, Search, User, LogOut, Cloud, CloudOff } from 'lucide-react';
 import { AppContext } from '../App';
+import { useSettings } from '../contexts/SettingsContext';
+import { t } from '../i18n/translations';
 import { supabaseAuth } from '../services/supabase';
 import { useNavigate } from 'react-router-dom';
 
 function Header({ onSearch }) {
     const { user } = useContext(AppContext);
+    const { language } = useSettings();
     const navigate = useNavigate();
     const [searchQuery, setSearchQuery] = useState('');
     const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -35,12 +38,13 @@ function Header({ onSearch }) {
     };
 
     return (
-        <header className="fixed top-0 left-0 right-0 z-40 bg-bg-secondary/95 backdrop-blur-md border-b border-white/5"
+        <header className="fixed top-0 left-0 right-0 z-40 bg-bg-secondary/95 backdrop-blur-md border-b"
             style={{
                 paddingTop: '32px',
                 paddingBottom: '0.5rem',
                 paddingLeft: 'max(0.75rem, env(safe-area-inset-left))',
                 paddingRight: 'max(0.75rem, env(safe-area-inset-right))',
+                borderBottomColor: 'var(--border-color)',
             }}>
             <div className="max-w-7xl mx-auto flex items-center gap-2">
                 {/* Profile Avatar */}
@@ -59,9 +63,10 @@ function Header({ onSearch }) {
                                 className="fixed inset-0 z-40"
                                 onClick={() => setShowProfileMenu(false)}
                             />
-                            <div className="absolute top-12 left-0 w-64 bg-bg-card rounded-xl border border-white/10 shadow-card-lg z-50 overflow-hidden">
+                            <div className="absolute top-12 left-0 w-64 bg-bg-card rounded-xl shadow-card-lg z-50 overflow-hidden"
+                                style={{ border: '1px solid var(--border-color)' }}>
                                 {/* User Info */}
-                                <div className="p-4 border-b border-white/5">
+                                <div className="p-4" style={{ borderBottom: '1px solid var(--border-color)' }}>
                                     <div className="flex items-center gap-3">
                                         <div className="w-12 h-12 rounded-full bg-accent-gradient flex items-center justify-center text-white font-bold text-lg">
                                             {getUserInitial()}
@@ -74,17 +79,17 @@ function Header({ onSearch }) {
                                                     </div>
                                                     <div className="flex items-center gap-1 text-xs text-success mt-1">
                                                         <Cloud size={12} />
-                                                        Synced
+                                                        {t('synced', language)}
                                                     </div>
                                                 </>
                                             ) : (
                                                 <>
                                                     <div className="text-sm font-medium text-white">
-                                                        Guest
+                                                        {t('guest', language)}
                                                     </div>
                                                     <div className="flex items-center gap-1 text-xs text-text-tertiary mt-1">
                                                         <CloudOff size={12} />
-                                                        Local only
+                                                        {t('localOnly', language)}
                                                     </div>
                                                 </>
                                             )}
@@ -100,7 +105,7 @@ function Header({ onSearch }) {
                                             className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-secondary hover:bg-bg-tertiary hover:text-white transition-colors duration-200"
                                         >
                                             <LogOut size={16} />
-                                            Sign Out
+                                            {t('signOut', language)}
                                         </button>
                                     ) : (
                                         <button
@@ -111,7 +116,7 @@ function Header({ onSearch }) {
                                             className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-accent-primary hover:bg-bg-tertiary transition-colors duration-200"
                                         >
                                             <Cloud size={16} />
-                                            Sign In to Sync
+                                            {t('signInToSync', language)}
                                         </button>
                                     )}
                                 </div>
@@ -121,11 +126,12 @@ function Header({ onSearch }) {
                 </div>
 
                 {/* Search Bar */}
-                <div className="flex items-center gap-2 bg-bg-tertiary rounded-xl py-2 px-3 border border-white/5 transition-all duration-200 flex-1 focus-within:border-accent-primary/50 focus-within:shadow-glow min-w-0">
+                <div className="flex items-center gap-2 bg-bg-tertiary rounded-xl py-2 px-3 transition-all duration-200 flex-1 focus-within:border-accent-primary/50 focus-within:shadow-glow min-w-0"
+                    style={{ border: '1px solid var(--border-color)' }}>
                     <Search size={16} className="text-text-tertiary flex-shrink-0" />
                     <input
                         type="text"
-                        placeholder="Buscar..."
+                        placeholder={t('search', language)}
                         value={searchQuery}
                         onChange={handleSearchChange}
                         className="flex-1 bg-transparent border-none outline-none text-sm text-white font-sans placeholder:text-text-tertiary min-w-0"
@@ -134,10 +140,15 @@ function Header({ onSearch }) {
 
                 {/* Action Buttons */}
                 <div className="flex items-center gap-1 flex-shrink-0">
-                    <button className="inline-flex items-center justify-center p-2 rounded-xl bg-transparent text-text-secondary hover:bg-white/5 transition-all duration-200">
+                    <button className="inline-flex items-center justify-center p-2 rounded-xl bg-transparent text-text-secondary transition-all duration-200"
+                        style={{ ':hover': { backgroundColor: 'var(--bg-hover)' } }}>
                         <Bell size={18} />
                     </button>
-                    <button className="inline-flex items-center justify-center p-2 rounded-xl bg-transparent text-text-secondary hover:bg-white/5 transition-all duration-200">
+                    <button 
+                        onClick={() => navigate('/settings')}
+                        className="inline-flex items-center justify-center p-2 rounded-xl bg-transparent text-text-secondary transition-all duration-200"
+                        style={{ ':hover': { backgroundColor: 'var(--bg-hover)' } }}
+                    >
                         <Settings size={18} />
                     </button>
                 </div>

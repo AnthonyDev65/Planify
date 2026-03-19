@@ -9,10 +9,13 @@ import Subscriptions from './pages/Subscriptions';
 import Vault from './pages/Vault';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import Settings from './pages/Settings';
+import { SettingsProvider } from './contexts/SettingsContext';
 import { subscriptionsStorage, activitiesStorage, passwordsStorage, storageUtils } from './services/storage';
 import { syncSubscriptions, syncActivities, syncPasswords } from './services/dataSync';
 import { supabaseAuth } from './services/supabase';
 import { initializeNotifications, scheduleAllSubscriptionReminders, addNotificationListener } from './services/localNotifications';
+import { checkAndUpdateSubscriptions } from './utils/helpers';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { App as CapApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
@@ -41,6 +44,7 @@ function App() {
   const [user, setUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [isFirstTime, setIsFirstTime] = useState(false);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
   useEffect(() => {
     // Configure Status Bar for Android/iOS
@@ -146,7 +150,10 @@ function App() {
 
   const loadData = async () => {
     try {
-      setLoading(true);
+      // Solo mostrar loading screen si es la carga inicial
+      if (!initialLoadComplete) {
+        setLoading(true);
+      }
       console.log('loadData: Starting to load data from Supabase/local');
       
       // Timeout de seguridad: si tarda más de 10 segundos, usar datos locales
@@ -160,10 +167,29 @@ function App() {
         syncPasswords.getAll()
       ]);
       
-      const [subsData, activitiesData, passwordsData] = await Promise.race([
+      let [subsData, activitiesData, passwordsData] = await Promise.race([
         dataPromise,
         timeoutPromise
       ]);
+      
+      // Verificar y actualizar fechas de pago que hayan pasado
+      const updatedSubs = checkAndUpdateSubscriptions(subsData);
+      
+      // Si hubo cambios, guardar las suscripciones actualizadas
+      const hasChanges = updatedSubs.some((sub, index) => 
+        sub.nextPayment !== subsData[index].nextPayment
+      );
+      
+      if (hasChanges) {
+        console.log('Updating subscriptions with new payment dates');
+        // Guardar cada suscripción actualizada
+        for (const sub of updatedSubs) {
+          if (sub.nextPayment !== subsData.find(s => s.id === sub.id)?.nextPayment) {
+            await syncSubscriptions.update(sub.id, sub);
+          }
+        }
+        subsData = updatedSubs;
+      }
       
       setSubscriptions(subsData);
       setActivities(activitiesData);
@@ -197,24 +223,47 @@ function App() {
       }
     } finally {
       setLoading(false);
+      setInitialLoadComplete(true);
       console.log('loadData: Finished');
     }
   };
 
   const loadLocalData = async () => {
     try {
-      setLoading(true);
+      // Solo mostrar loading screen si es la carga inicial
+      if (!initialLoadComplete) {
+        setLoading(true);
+      }
       console.log('loadLocalData: Starting to load local data');
       
       // Inicializar con datos de ejemplo si es la primera vez
       await storageUtils.seedData();
       
       // Cargar datos del almacenamiento local
-      const [subsData, activitiesData, passwordsData] = await Promise.all([
+      let [subsData, activitiesData, passwordsData] = await Promise.all([
         subscriptionsStorage.getAll(),
         activitiesStorage.getAll(),
         passwordsStorage.getAll()
       ]);
+      
+      // Verificar y actualizar fechas de pago que hayan pasado
+      const updatedSubs = checkAndUpdateSubscriptions(subsData);
+      
+      // Si hubo cambios, guardar las suscripciones actualizadas
+      const hasChanges = updatedSubs.some((sub, index) => 
+        sub.nextPayment !== subsData[index].nextPayment
+      );
+      
+      if (hasChanges) {
+        console.log('Updating local subscriptions with new payment dates');
+        // Guardar cada suscripción actualizada
+        for (const sub of updatedSubs) {
+          if (sub.nextPayment !== subsData.find(s => s.id === sub.id)?.nextPayment) {
+            await subscriptionsStorage.update(sub.id, sub);
+          }
+        }
+        subsData = updatedSubs;
+      }
       
       setSubscriptions(subsData);
       setActivities(activitiesData);
@@ -234,6 +283,7 @@ function App() {
       setPasswords([]);
     } finally {
       setLoading(false);
+      setInitialLoadComplete(true);
       console.log('loadLocalData: Finished');
     }
   };
@@ -247,18 +297,7 @@ function App() {
     checkAuth // Agregar checkAuth al contexto
   };
 
-  if (!authChecked) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-bg-primary">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-bg-tertiary border-t-accent-primary rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-text-tertiary">Loading Planify...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (loading) {
+  if (!authChecked || (loading && !initialLoadComplete)) {
     return (
       <div className="flex items-center justify-center h-screen bg-bg-primary">
         <div className="text-center">
@@ -270,31 +309,34 @@ function App() {
   }
 
   return (
-    <AppContext.Provider value={contextValue}>
-      <Router>
-        <AppLayout>
-          <div className="min-h-screen bg-bg-primary md:bg-bg-secondary" style={{ overscrollBehavior: 'none' }}>
-            {/* Desktop Sidebar - Hide on auth pages */}
-            <DesktopSidebar />
+    <SettingsProvider>
+      <AppContext.Provider value={contextValue}>
+        <Router>
+          <AppLayout>
+            <div className="min-h-screen bg-bg-primary md:bg-bg-secondary" style={{ overscrollBehavior: 'none' }}>
+              {/* Desktop Sidebar - Hide on auth pages */}
+              <DesktopSidebar />
 
-            {/* Main Content */}
-            <div className="md:ml-64 min-h-screen">
-              <main className="pb-20 md:pb-8">
-                <Routes>
-                  <Route path="/welcome" element={<Welcome />} />
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/register" element={<Register />} />
-                  <Route path="/" element={isFirstTime ? <Navigate to="/welcome" replace /> : <Home />} />
-                  <Route path="/planner" element={<Planner />} />
-                  <Route path="/subscriptions" element={<Subscriptions />} />
-                  <Route path="/vault" element={<Vault />} />
-                </Routes>
-              </main>
+              {/* Main Content */}
+              <div className="md:ml-64 min-h-screen">
+                <main className="pb-20 md:pb-8">
+                  <Routes>
+                    <Route path="/welcome" element={<Welcome />} />
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/register" element={<Register />} />
+                    <Route path="/" element={isFirstTime ? <Navigate to="/welcome" replace /> : <Home />} />
+                    <Route path="/planner" element={<Planner />} />
+                    <Route path="/subscriptions" element={<Subscriptions />} />
+                    <Route path="/vault" element={<Vault />} />
+                    <Route path="/settings" element={<Settings />} />
+                  </Routes>
+                </main>
+              </div>
             </div>
-          </div>
-        </AppLayout>
-      </Router>
-    </AppContext.Provider>
+          </AppLayout>
+        </Router>
+      </AppContext.Provider>
+    </SettingsProvider>
   );
 }
 

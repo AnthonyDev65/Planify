@@ -5,6 +5,19 @@
 @tailwind components;
 @tailwind utilities;
 
+/* CSS Variables for theming */
+:root {
+  --bg-primary: #0a0a0f;
+  --bg-secondary: #13131a;
+  --bg-tertiary: #1a1a24;
+  --bg-card: #13131a;
+  --bg-hover: #1e1e2a;
+  --text-primary: #ffffff;
+  --text-secondary: #a0a0ab;
+  --text-tertiary: #6b6b76;
+  --border-color: rgba(255, 255, 255, 0.05);
+}
+
 /* Base styles */
 @layer base {
   * {
@@ -24,8 +37,8 @@
 
   body {
     font-family: 'Outfit', system-ui, -apple-system, sans-serif;
-    background-color: #0a0a0f;
-    color: #ffffff;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overscroll-behavior: none;
@@ -93,7 +106,8 @@
 
   /* Form inputs */
   .input {
-    @apply w-full py-3 px-4 rounded-lg bg-bg-tertiary border border-white/5 text-white outline-none transition-all duration-200 font-sans text-sm;
+    @apply w-full py-3 px-4 rounded-lg bg-bg-tertiary text-text-primary outline-none transition-all duration-200 font-sans text-sm;
+    border: 1px solid var(--border-color);
   }
 
   .input:focus {
@@ -110,7 +124,8 @@
   }
 
   .calendar-day.other-month {
-    @apply text-text-tertiary/30;
+    color: var(--text-tertiary);
+    opacity: 0.3;
   }
 
   .calendar-day.today {
@@ -128,7 +143,12 @@
 
   /* Subscription card items */
   .subscription-item {
-    @apply flex items-center gap-3 p-4 bg-bg-card rounded-lg border border-white/5 cursor-pointer mb-3 transition-all duration-200 hover:border-white/10 hover:shadow-card;
+    @apply flex items-center gap-3 p-4 bg-bg-card rounded-lg cursor-pointer mb-3 transition-all duration-200;
+    border: 1px solid var(--border-color);
+  }
+  
+  .subscription-item:hover {
+    box-shadow: 0 4px 16px rgba(139, 92, 246, 0.1);
   }
 
   .subscription-logo {
@@ -161,7 +181,12 @@
 
   /* Activity card items */
   .activity-item {
-    @apply flex items-center gap-4 p-4 bg-bg-card rounded-lg border border-white/5 cursor-pointer mb-3 transition-all duration-200 hover:border-white/10 hover:shadow-card;
+    @apply flex items-center gap-4 p-4 bg-bg-card rounded-lg cursor-pointer mb-3 transition-all duration-200;
+    border: 1px solid var(--border-color);
+  }
+  
+  .activity-item:hover {
+    box-shadow: 0 4px 16px rgba(139, 92, 246, 0.1);
   }
 
   .activity-time {
@@ -206,7 +231,12 @@
 
   /* Password card items */
   .password-item {
-    @apply flex items-center gap-3 p-4 bg-bg-card rounded-lg border border-white/5 cursor-pointer mb-3 transition-all duration-200 hover:border-white/10 hover:shadow-card;
+    @apply flex items-center gap-3 p-4 bg-bg-card rounded-lg cursor-pointer mb-3 transition-all duration-200;
+    border: 1px solid var(--border-color);
+  }
+  
+  .password-item:hover {
+    box-shadow: 0 4px 16px rgba(139, 92, 246, 0.1);
   }
 
   .password-icon {

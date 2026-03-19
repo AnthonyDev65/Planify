@@ -7,6 +7,7 @@ import ActivityCard from '../components/ActivityCard';
 import Modal from '../components/Modal';
 import Toast from '../components/Toast';
 import { syncActivities } from '../services/dataSync';
+import { generateId } from '../utils/helpers';
 import { formatDateFull } from '../utils/helpers';
 
 const PRIORITIES = [
@@ -73,20 +74,23 @@ function Planner() {
             };
 
             if (editingActivity) {
-                const updated = await syncActivities.update(editingActivity.id, activityData);
+                const updated = { ...activityData, id: editingActivity.id };
+                await syncActivities.update(editingActivity.id, updated);
                 setActivities(prev =>
                     prev.map(a => a.id === editingActivity.id ? updated : a)
                 );
                 setToast({ visible: true, message: 'Activity updated!', type: 'success' });
             } else {
-                const created = await syncActivities.create(activityData);
+                const created = { ...activityData, id: generateId() };
+                await syncActivities.create(created);
                 setActivities(prev => [...prev, created]);
                 setToast({ visible: true, message: 'Activity added!', type: 'success' });
             }
 
             closeModal();
         } catch (error) {
-            setToast({ visible: true, message: error.message, type: 'error' });
+            console.error('Error saving activity:', error);
+            setToast({ visible: true, message: error.message || 'Error saving activity', type: 'error' });
         }
     };
 
@@ -109,7 +113,8 @@ function Planner() {
             setActivities(prev => prev.filter(a => a.id !== id));
             setToast({ visible: true, message: 'Activity deleted', type: 'success' });
         } catch (error) {
-            setToast({ visible: true, message: error.message, type: 'error' });
+            console.error('Error deleting activity:', error);
+            setToast({ visible: true, message: error.message || 'Error deleting activity', type: 'error' });
         }
     };
 
@@ -132,16 +137,15 @@ function Planner() {
     };
 
     const tabBase = "flex-1 py-2.5 px-4 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer border-none font-sans";
-    const tabInactive = "bg-bg-tertiary text-white/60";
+    const tabInactive = "bg-bg-tertiary text-primary/60";
     const tabActive = "bg-accent-gradient text-white";
 
     return (
-        <div className="animate-fade-in min-h-screen">
+        <div className="animate-fade-in">
             <Header onSearch={setSearchQuery} />
 
-            <div className="pt-24 md:pt-28 px-4 md:px-8 max-w-7xl mx-auto pb-24 md:pb-8">
-                {/* View Mode Tabs */}
-                <div className="flex gap-2 mb-4">
+            {/* View Mode Tabs */}
+            <div className="flex mt-28 gap-2 px-4 mb-4">
                 <button
                     className={`${tabBase} ${viewMode === 'day' ? tabActive : tabInactive}`}
                     onClick={() => setViewMode('day')}
@@ -162,18 +166,17 @@ function Planner() {
                 </button>
             </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Calendar */}
-                    <section className="lg:col-span-1">
-                        <Calendar
-                            selectedDate={selectedDate}
-                            onDateSelect={setSelectedDate}
-                            events={activities}
-                        />
-                    </section>
+            {/* Calendar */}
+            <section className="px-4 mb-6">
+                <Calendar
+                    selectedDate={selectedDate}
+                    onDateSelect={setSelectedDate}
+                    events={activities}
+                />
+            </section>
 
-                    {/* Selected Date Schedule */}
-                    <section className="lg:col-span-2">
+            {/* Selected Date Header */}
+            <section className="px-4 mb-6">
                 <div className="flex items-center justify-between mb-4">
                     <div>
                         <h2 className="text-lg font-bold">Schedule</h2>
@@ -217,8 +220,8 @@ function Planner() {
                     </div>
                 ) : (
                     <div className="flex flex-col items-center justify-center gap-4 py-12 text-center">
-                        <Clock size={48} className="text-white/20" />
-                        <h3 className="text-lg font-semibold text-white/80">No activities scheduled</h3>
+                        <Clock size={48} className="text-primary/20" />
+                        <h3 className="text-lg font-semibold text-primary/80">No activities scheduled</h3>
                         <p className="text-sm text-text-tertiary">Add an activity for {formatDateFull(selectedDate)}</p>
                         <button
                             className="inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-medium text-sm bg-accent-gradient text-white shadow-card hover:shadow-card-md hover:scale-105 active:scale-95"
@@ -228,9 +231,7 @@ function Planner() {
                         </button>
                     </div>
                 )}
-                    </section>
-                </div>
-            </div>
+            </section>
 
             {/* Add/Edit Modal */}
             <Modal

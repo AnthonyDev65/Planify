@@ -6,8 +6,8 @@ import PasswordCard from '../components/PasswordCard';
 import Modal from '../components/Modal';
 import Toast from '../components/Toast';
 import { syncPasswords } from '../services/dataSync';
-import { generatePassword, checkPasswordStrength } from '../utils/helpers';
-import { getServiceIcon } from '../utils/serviceIcons';
+import { generatePassword, checkPasswordStrength, generateId } from '../utils/helpers';
+import { useSettings } from '../contexts/SettingsContext';
 
 function Vault() {
     const { passwords, setPasswords } = useContext(AppContext);
@@ -18,6 +18,8 @@ function Vault() {
     const [searchQuery, setSearchQuery] = useState('');
     const [formData, setFormData] = useState({ name: '', username: '', password: '', url: '', notes: '' });
     const [generatorOptions] = useState({ length: 16, includeUppercase: true, includeLowercase: true, includeNumbers: true, includeSymbols: true });
+
+    const { theme } = useSettings();
 
     const passwordStrength = checkPasswordStrength(formData.password);
     const filteredPasswords = passwords.filter(pass => {
@@ -55,32 +57,26 @@ function Vault() {
             return;
         }
         try {
-            // Obtener icono automáticamente usando el mismo sistema que subscriptions
-            const iconData = getServiceIcon(formData.name);
-            const favicon = iconData ? iconData.icon : '🔑';
-            
-            const passwordData = { 
-                name: formData.name, 
-                username: formData.username, 
-                password: formData.password, 
-                url: formData.url, 
-                notes: formData.notes, 
-                strength: checkPasswordStrength(formData.password), 
-                favicon: favicon 
+            const getFavicon = (name) => {
+                const favicons = { 'google': '🔵', 'github': '⚫', 'amazon': '🟠', 'netflix': '🔴', 'facebook': '🔵', 'twitter': '🐦', 'instagram': '📸', 'linkedin': '💼' };
+                return favicons[name.toLowerCase()] || '🔑';
             };
-            
+            const passwordData = { name: formData.name, username: formData.username, password: formData.password, url: formData.url, notes: formData.notes, strength: checkPasswordStrength(formData.password), favicon: getFavicon(formData.name) };
             if (editingPassword) {
-                const updated = await syncPasswords.update(editingPassword.id, passwordData);
+                const updated = { ...passwordData, id: editingPassword.id };
+                await syncPasswords.update(editingPassword.id, updated);
                 setPasswords(prev => prev.map(p => p.id === editingPassword.id ? updated : p));
                 setToast({ visible: true, message: 'Password updated!', type: 'success' });
             } else {
-                const created = await syncPasswords.create(passwordData);
+                const created = { ...passwordData, id: generateId() };
+                await syncPasswords.create(created);
                 setPasswords(prev => [...prev, created]);
                 setToast({ visible: true, message: 'Password saved!', type: 'success' });
             }
             closeModal();
         } catch (error) {
-            setToast({ visible: true, message: error.message, type: 'error' });
+            console.error('Error saving password:', error);
+            setToast({ visible: true, message: error.message || 'Error saving password', type: 'error' });
         }
     };
 
@@ -96,7 +92,8 @@ function Vault() {
             setPasswords(prev => prev.filter(p => p.id !== id));
             setToast({ visible: true, message: 'Password deleted', type: 'success' });
         } catch (error) {
-            setToast({ visible: true, message: error.message, type: 'error' });
+            console.error('Error deleting password:', error);
+            setToast({ visible: true, message: error.message || 'Error deleting password', type: 'error' });
         }
     };
 
@@ -111,13 +108,17 @@ function Vault() {
     const getStrengthClass = (s) => s === 'strong' ? 'text-success' : s === 'medium' ? 'text-warning' : 'text-danger';
 
     return (
-        <div className="animate-fade-in min-h-screen">
+        <div className="animate-fade-in">
             <Header onSearch={setSearchQuery} />
-            <div className="pt-24 md:pt-28 px-4 md:px-8 max-w-7xl mx-auto pb-24 md:pb-8">
-            <section className="mb-6">
-                <div className="bg-card-gradient rounded-xl p-4 border border-white/5">
+            <section className="px-4 mb-6 mt-28">
+                <div className={`
+                ${theme === 'dark' ? 'bg-[#1a1a24] text-white/60' : 'bg-gray-200 text-gray-600'}
+                
+                
+                
+                rounded-xl p-4 border border-white/5`}>
                     <div className="flex items-center gap-4 mb-5">
-                        <div className="w-14 h-14 bg-accent-gradient rounded-xl flex items-center justify-center"><Shield size={28} /></div>
+                        <div className="w-14 h-14 bg-accent-gradient rounded-xl flex items-center justify-center"><Shield className='text-bg-primary' size={28} /></div>
                         <div><div className="text-sm text-text-tertiary">Password Vault</div><div className="text-2xl font-bold">{securityStats.total} saved</div></div>
                     </div>
                     <div className="grid grid-cols-3 gap-3">
@@ -128,7 +129,7 @@ function Vault() {
                     <button className="w-full mt-5 inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-medium text-sm bg-accent-gradient text-white shadow-card hover:shadow-card-md hover:scale-105 active:scale-95" onClick={() => setShowModal(true)}><Plus size={18} /> Add Password</button>
                 </div>
             </section>
-            <section className="mb-6">
+            <section className="px-4 mb-6">
                 <div className="flex items-center justify-between mb-4"><h2 className="text-lg font-bold">Saved Passwords</h2></div>
                 {filteredPasswords.length > 0 ? filteredPasswords.map(p => <PasswordCard key={p.id} password={p} onClick={() => handleEdit(p)} onCopy={() => handleCopyPassword(p.password)} />) : (
                     <div className="flex flex-col items-center justify-center gap-4 py-12 text-center">
@@ -139,7 +140,6 @@ function Vault() {
                     </div>
                 )}
             </section>
-            </div>
             <Modal isOpen={showModal} onClose={closeModal} title={editingPassword ? 'Edit Password' : 'Add Password'} footer={<><button className="flex-1 inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-medium text-sm bg-bg-tertiary text-text-secondary hover:bg-bg-hover" onClick={closeModal}>Cancel</button><button className="flex-1 inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-medium text-sm bg-accent-gradient text-white" onClick={handleSubmit}>{editingPassword ? 'Update' : 'Save'}</button></>}>
                 <form onSubmit={handleSubmit}>
                     <div className="flex flex-col gap-2 mb-4"><label className="text-sm font-medium text-white/80 flex items-center gap-1.5"><Key size={14} />Service Name *</label><input type="text" name="name" className="input" placeholder="e.g., Google" value={formData.name} onChange={handleInputChange} /></div>

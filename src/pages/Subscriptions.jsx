@@ -1,19 +1,19 @@
 import { useContext, useState } from 'react';
-import { Plus, Filter, Trash2, CreditCard, Bell } from 'lucide-react';
+import { Plus, Filter, Trash2, CreditCard } from 'lucide-react';
 import { AppContext } from '../App';
 import Header from '../components/Header';
 import SubscriptionCard from '../components/SubscriptionCard';
 import Modal from '../components/Modal';
 import Toast from '../components/Toast';
 import { syncSubscriptions } from '../services/dataSync';
-import { scheduleSubscriptionReminder, cancelSubscriptionReminder, sendDebugPaymentNotification } from '../services/localNotifications';
-import { Capacitor } from '@capacitor/core';
+import { useSettings } from '../contexts/SettingsContext';
+import { t } from '../i18n/translations';
+import { generateId } from '../utils/helpers';
 import {
     formatCurrency,
     calculateMonthlyTotal,
     getCategoryColor
 } from '../utils/helpers';
-import { getIconAndColor } from '../utils/serviceIcons';
 
 const CATEGORIES = [
     'Entertainment', 'Music', 'Cloud', 'Gaming',
@@ -24,6 +24,7 @@ const PERIODS = ['monthly', 'yearly'];
 
 function Subscriptions() {
     const { subscriptions, setSubscriptions } = useContext(AppContext);
+    const { theme, language } = useSettings();
     const [showModal, setShowModal] = useState(false);
     const [editingSubscription, setEditingSubscription] = useState(null);
     const [selectedCategory, setSelectedCategory] = useState('All');
@@ -65,17 +66,10 @@ function Subscriptions() {
         }
 
         try {
-            // Obtener icono y color automáticamente
-            const iconData = getIconAndColor(
-                formData.name,
-                editingSubscription?.logo,
-                editingSubscription?.color
-            );
-
-            const newSubscription = {
+            const subscriptionData = {
                 name: formData.name,
-                logo: iconData.icon || iconData.fallback, // Usar URL o fallback
-                color: iconData.color,
+                logo: formData.name.charAt(0).toUpperCase(),
+                color: getCategoryColor(formData.category),
                 price: parseFloat(formData.price),
                 currency: 'USD',
                 period: formData.period,
@@ -85,32 +79,23 @@ function Subscriptions() {
             };
 
             if (editingSubscription) {
-                const updated = await syncSubscriptions.update(editingSubscription.id, newSubscription);
+                const updated = { ...subscriptionData, id: editingSubscription.id };
+                await syncSubscriptions.update(editingSubscription.id, updated);
                 setSubscriptions(prev =>
                     prev.map(s => s.id === editingSubscription.id ? updated : s)
                 );
-                
-                // Reprogramar notificación
-                if (Capacitor.isNativePlatform() && updated.active) {
-                    await scheduleSubscriptionReminder(updated);
-                }
-                
                 setToast({ visible: true, message: 'Subscription updated!', type: 'success' });
             } else {
-                const created = await syncSubscriptions.create(newSubscription);
+                const created = { ...subscriptionData, id: generateId() };
+                await syncSubscriptions.create(created);
                 setSubscriptions(prev => [...prev, created]);
-                
-                // Programar notificación
-                if (Capacitor.isNativePlatform() && created.active) {
-                    await scheduleSubscriptionReminder(created);
-                }
-                
                 setToast({ visible: true, message: 'Subscription added!', type: 'success' });
             }
 
             closeModal();
         } catch (error) {
-            setToast({ visible: true, message: error.message, type: 'error' });
+            console.error('Error saving subscription:', error);
+            setToast({ visible: true, message: error.message || 'Error saving subscription', type: 'error' });
         }
     };
 
@@ -130,48 +115,24 @@ function Subscriptions() {
         try {
             await syncSubscriptions.delete(id);
             setSubscriptions(prev => prev.filter(s => s.id !== id));
-            
-            // Cancelar notificación
-            if (Capacitor.isNativePlatform()) {
-                await cancelSubscriptionReminder(id);
-            }
-            
             setToast({ visible: true, message: 'Subscription deleted', type: 'success' });
         } catch (error) {
-            setToast({ visible: true, message: error.message, type: 'error' });
+            console.error('Error deleting subscription:', error);
+            setToast({ visible: true, message: error.message || 'Error deleting subscription', type: 'error' });
         }
     };
 
     const handleToggleActive = async (id) => {
         try {
             const subscription = subscriptions.find(s => s.id === id);
-            const updated = await syncSubscriptions.update(id, { ...subscription, active: !subscription.active });
+            const updated = { ...subscription, active: !subscription.active };
+            await syncSubscriptions.update(id, updated);
             setSubscriptions(prev =>
                 prev.map(s => s.id === id ? updated : s)
             );
         } catch (error) {
-            setToast({ visible: true, message: error.message, type: 'error' });
-        }
-    };
-
-    const handleDebugNotification = async () => {
-        if (!Capacitor.isNativePlatform()) {
-            setToast({ visible: true, message: 'Notifications only work on Android', type: 'error' });
-            return;
-        }
-
-        try {
-            // Usar la primera suscripción activa o crear una de ejemplo
-            const activeSub = subscriptions.find(s => s.active) || {
-                name: 'Netflix',
-                price: '$9.99',
-                id: 'debug-sub'
-            };
-
-            await sendDebugPaymentNotification(activeSub);
-            setToast({ visible: true, message: 'Debug notification sent! Check in 2 seconds', type: 'success' });
-        } catch (error) {
-            setToast({ visible: true, message: error.message, type: 'error' });
+            console.error('Error toggling subscription:', error);
+            setToast({ visible: true, message: error.message || 'Error updating subscription', type: 'error' });
         }
     };
 
@@ -188,17 +149,20 @@ function Subscriptions() {
     };
 
     return (
-        <div className="animate-fade-in min-h-screen">
+        <div className="animate-fade-in">
             <Header onSearch={setSearchQuery} />
 
-            <div className="pt-24 md:pt-28 px-4 md:px-8 max-w-7xl mx-auto pb-24 md:pb-8">
-                {/* Stats Header */}
-                <div className="mb-6">
-                <div className="bg-gradient-to-br from-[#16161f] to-[#1a1a24] rounded-xl p-4 border border-white/5">
+            {/* Stats Header */}
+            <div className="px-4 mb-6 mt-28">
+                <div className={`
+                ${theme === 'dark' ? 'bg-[#1a1a24] text-white/60' : 'bg-gray-200 text-gray-600'}
+                    rounded-xl p-4 border border-white/5`}>
+                    
+                    
                     <div className="flex justify-between items-start">
                         <div>
-                            <div className="text-sm text-white/50">Total Monthly</div>
-                            <div className="text-3xl font-bold mt-1 text-white">
+                            <div className="text-sm text-primary/50">Total Monthly</div>
+                            <div className="text-3xl font-bold mt-1 text-primary">
                                 {formatCurrency(monthlyTotal)}
                             </div>
                         </div>
@@ -208,18 +172,13 @@ function Subscriptions() {
                     </div>
 
                     <div className="flex gap-3 mt-5">
-                        <button className="flex-1 inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-medium text-sm bg-[#1a1a24] text-white/70 hover:bg-[#1a1a24]/80 hover:text-white transition-all duration-200">
+                        <button className={`flex-1 inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-medium text-sm
+                        ${theme === 'dark' 
+                            ? 'bg-[#1a1a24] text-white/60 hover:bg-[#1a1a24]/80' 
+                            : 'bg-gray-200 text-gray-600 hover:bg-gray-200/80'}
+                        transition-all duration-200`}>
                             <Filter size={16} /> Manage
                         </button>
-                        {Capacitor.isNativePlatform() && (
-                            <button
-                                className="inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-medium text-sm bg-[#1a1a24] text-white/70 hover:bg-[#1a1a24]/80 hover:text-white transition-all duration-200"
-                                onClick={handleDebugNotification}
-                                title="Test payment notification"
-                            >
-                                <Bell size={16} />
-                            </button>
-                        )}
                         <button
                             className="flex-1 inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-medium text-sm bg-gradient-to-r from-[#8b5cf6] to-[#6366f1] text-white shadow-[0_2px_8px_rgba(0,0,0,0.3)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.4)] hover:scale-105 active:scale-95 transition-all duration-200"
                             onClick={() => setShowModal(true)}
@@ -230,12 +189,12 @@ function Subscriptions() {
                 </div>
             </div>
 
-                {/* Category Filter */}
-                <div className="flex gap-2 mb-5 overflow-x-auto pb-2">
+            {/* Category Filter */}
+            <div className="flex gap-2 px-4 mb-5 overflow-x-auto pb-2">
                 <button
                     className={`inline-flex items-center justify-center py-2 px-3 rounded-xl font-medium text-sm whitespace-nowrap transition-all duration-200 ${selectedCategory === 'All'
                             ? 'bg-gradient-to-r from-[#8b5cf6] to-[#6366f1] text-white'
-                            : 'bg-[#1a1a24] text-white/60'
+                            : `${theme === 'dark' ? 'bg-[#1a1a24] text-white/60' : 'bg-gray-200 text-gray-600'}`
                         }`}
                     onClick={() => setSelectedCategory('All')}
                 >
@@ -246,7 +205,7 @@ function Subscriptions() {
                         key={cat}
                         className={`inline-flex items-center justify-center py-2 px-3 rounded-xl font-medium text-sm whitespace-nowrap transition-all duration-200 ${selectedCategory === cat
                                 ? 'bg-gradient-to-r from-[#8b5cf6] to-[#6366f1] text-white'
-                                : 'bg-[#1a1a24] text-white/60'
+                                : `${theme === 'dark' ? 'bg-[#1a1a24] text-white/60' : 'bg-gray-200 text-gray-600'}`
                             }`}
                         onClick={() => setSelectedCategory(cat)}
                     >
@@ -255,8 +214,8 @@ function Subscriptions() {
                 ))}
             </div>
 
-                {/* Subscriptions List */}
-                <section className="mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* Subscriptions List */}
+            <section className="px-4 mb-6">
                 <div className="flex items-center justify-between mb-4">
                     <h2 className="text-lg font-bold">Your Subscriptions</h2>
                 </div>
@@ -288,8 +247,7 @@ function Subscriptions() {
                         </button>
                     </div>
                 )}
-                </section>
-            </div>
+            </section>
 
             {/* Add/Edit Modal */}
             <Modal

@@ -139,3 +139,66 @@ export const groupActivitiesByDate = (activities) => {
 export const generateId = () => {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
 };
+
+// Update subscription next payment date if it has passed
+export const updateNextPaymentDate = (subscription) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const nextPaymentDate = new Date(subscription.nextPayment);
+    nextPaymentDate.setHours(0, 0, 0, 0);
+    
+    // Si la fecha de pago ya pasó, calcular la siguiente
+    if (nextPaymentDate < today) {
+        const newDate = new Date(nextPaymentDate);
+        
+        switch (subscription.period) {
+            case 'daily':
+                // Calcular cuántos días han pasado y agregar
+                const daysPassed = Math.ceil((today - nextPaymentDate) / (1000 * 60 * 60 * 24));
+                newDate.setDate(newDate.getDate() + daysPassed);
+                break;
+                
+            case 'weekly':
+                // Agregar semanas hasta que sea mayor que hoy
+                while (newDate < today) {
+                    newDate.setDate(newDate.getDate() + 7);
+                }
+                break;
+                
+            case 'monthly':
+                // Agregar meses hasta que sea mayor que hoy
+                while (newDate < today) {
+                    newDate.setMonth(newDate.getMonth() + 1);
+                }
+                break;
+                
+            case 'yearly':
+                // Agregar años hasta que sea mayor que hoy
+                while (newDate < today) {
+                    newDate.setFullYear(newDate.getFullYear() + 1);
+                }
+                break;
+                
+            default:
+                // Por defecto, asumir mensual
+                while (newDate < today) {
+                    newDate.setMonth(newDate.getMonth() + 1);
+                }
+        }
+        
+        // Retornar la suscripción actualizada
+        return {
+            ...subscription,
+            nextPayment: newDate.toISOString().split('T')[0]
+        };
+    }
+    
+    // Si la fecha no ha pasado, retornar sin cambios
+    return subscription;
+};
+
+// Check and update all subscriptions with passed payment dates
+export const checkAndUpdateSubscriptions = (subscriptions) => {
+    return subscriptions.map(sub => updateNextPaymentDate(sub));
+};

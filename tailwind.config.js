@@ -7,12 +7,12 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Background colors
-        'bg-primary': '#0a0a0f',
-        'bg-secondary': '#12121a',
-        'bg-tertiary': '#1a1a24',
-        'bg-card': '#16161f',
-        'bg-hover': '#1e1e2a',
+        // Background colors - using CSS variables
+        'bg-primary': 'var(--bg-primary)',
+        'bg-secondary': 'var(--bg-secondary)',
+        'bg-tertiary': 'var(--bg-tertiary)',
+        'bg-card': 'var(--bg-card)',
+        'bg-hover': 'var(--bg-hover)',
         // Accent colors
         'accent-primary': '#8b5cf6',
         'accent-secondary': '#6366f1',
@@ -21,10 +21,10 @@ export default {
         'success': '#22c55e',
         'warning': '#eab308',
         'danger': '#ef4444',
-        // Text colors
-        'text-primary': '#ffffff',
-        'text-secondary': 'rgba(255, 255, 255, 0.7)',
-        'text-tertiary': 'rgba(255, 255, 255, 0.5)',
+        // Text colors - using CSS variables
+        'text-primary': 'var(--text-primary)',
+        'text-secondary': 'var(--text-secondary)',
+        'text-tertiary': 'var(--text-tertiary)',
       },
       fontFamily: {
         sans: ['Outfit', 'system-ui', 'sans-serif'],

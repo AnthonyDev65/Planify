@@ -10,6 +10,8 @@ import {
     Zap
 } from 'lucide-react';
 import { AppContext } from '../App';
+import { useSettings } from '../contexts/SettingsContext';
+import { t } from '../i18n/translations';
 import Header from '../components/Header';
 import SubscriptionCard from '../components/SubscriptionCard';
 import ActivityCard from '../components/ActivityCard';
@@ -25,6 +27,7 @@ import {
 
 function Home() {
     const { subscriptions, activities, passwords } = useContext(AppContext);
+    const { language } = useSettings();
     const [searchQuery, setSearchQuery] = useState('');
 
     const monthlyTotal = calculateMonthlyTotal(subscriptions);
@@ -84,33 +87,33 @@ function Home() {
                         {/* Summary Card */}
                         <div className="mb-6 p-6 rounded-2xl bg-accent-gradient shadow-card-lg">
                             <div className="flex items-center justify-between mb-4 ">
-                                <span className="">Monthly Expenses</span>
+                                <span className="text-white">{t('monthlyExpenses', language)}</span>
                                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-white/10 text-white/80 border border-white/80">
                                     <TrendingUp size={12} />
-                                    This month
+                                    {t('thisMonth', language)}
                                 </span>
                             </div>
 
-                            <div className="text-5xl font-bold mb-6">
+                            <div className="text-5xl font-bold mb-6 text-white">
                                 <span className="text-3xl text-white/80">$</span>
                                 {monthlyTotal.toFixed(2)}
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="flex flex-col gap-1">
-                                    <span className="text-xs text-white/60">Active Subscriptions</span>
+                                    <span className="text-xs text-white/60">{t('activeSubscriptions', language)}</span>
                                     <span className="text-lg font-bold text-white">
                                         {subscriptions.filter(s => s.active).length}
                                     </span>
                                 </div>
                                 <div className="flex flex-col gap-1">
-                                    <span className="text-xs text-white/60">Next Payment</span>
-                                    <span className="text-lg font-bold">
+                                    <span className="text-xs text-white/60">{t('nextPayment', language)}</span>
+                                    <span className="text-lg font-bold text-white">
                                         {nextPayment ? (
                                             <>
                                                 {formatCurrency(nextPayment.price)}
-                                                <small className="text-text-tertiary ml-1 text-xs">
-                                                    in {daysUntil(nextPayment.nextPayment)}d
+                                                <small className="text-text-tertiary text-white/60 ml-1 text-xs">
+                                                    {daysUntil(nextPayment.nextPayment)} {t('daysLeft', language)}
                                                 </small>
                                             </>
                                         ) : '—'}
@@ -156,7 +159,7 @@ function Home() {
                 {isSearching && !hasAnyResults && (
                     <div className="text-center py-12">
                         <div className="text-6xl mb-4">🔍</div>
-                        <h3 className="text-xl font-bold text-white mb-2">No se encontraron resultados</h3>
+                        <h3 className="text-xl font-bold text-text-primary mb-2">{t('noResults', language)}</h3>
                         <p className="text-text-tertiary">Intenta con otro término de búsqueda</p>
                     </div>
                 )}
@@ -167,12 +170,12 @@ function Home() {
                     {(!isSearching || hasSubscriptionResults) && (
                         <section className="md:col-span-2 lg:col-span-2">
                             <div className="flex items-center justify-between mb-4">
-                                <h2 className="text-lg font-bold">
-                                    {isSearching ? `Subscriptions (${displaySubscriptions.length})` : 'Active Subscriptions'}
+                                <h2 className="text-lg font-bold text-text-primary">
+                                    {isSearching ? `${t('subscriptions', language)} (${displaySubscriptions.length})` : t('activeSubscriptions', language)}
                                 </h2>
                                 {!isSearching && (
                                     <Link to="/subscriptions" className="text-sm text-accent-primary font-medium flex items-center gap-1 transition-colors duration-200 hover:text-accent-secondary no-underline">
-                                        See all <ChevronRight size={14} className="inline" />
+                                        {t('viewAll', language)} <ChevronRight size={14} className="inline" />
                                     </Link>
                                 )}
                             </div>
@@ -182,8 +185,8 @@ function Home() {
                                     <SubscriptionCard key={sub.id} subscription={sub} />
                                 ))
                             ) : (
-                                <div className="bg-bg-card rounded-xl p-6 border border-white/5 text-center">
-                                    <p className="text-text-tertiary">No active subscriptions</p>
+                                <div className="bg-bg-card rounded-xl p-6 text-center" style={{ border: '1px solid var(--border-color)' }}>
+                                    <p className="text-text-tertiary">{t('noActiveSubscriptions', language)}</p>
                                 </div>
                             )}
                         </section>
@@ -195,12 +198,12 @@ function Home() {
                         {(!isSearching || hasActivityResults) && (
                             <div>
                                 <div className="flex items-center justify-between mb-4">
-                                    <h2 className="text-lg font-bold">
-                                        {isSearching ? `Schedule (${displayActivities.length})` : "Today's Schedule"}
+                                    <h2 className="text-lg font-bold text-text-primary">
+                                        {isSearching ? `${t('schedule', language)} (${displayActivities.length})` : t('schedule', language)}
                                     </h2>
                                     {!isSearching && (
                                         <Link to="/planner" className="text-sm text-accent-primary font-medium flex items-center gap-1 transition-colors duration-200 hover:text-accent-secondary no-underline">
-                                            See all <ChevronRight size={14} className="inline" />
+                                            {t('viewAll', language)} <ChevronRight size={14} className="inline" />
                                         </Link>
                                     )}
                                 </div>
@@ -210,13 +213,13 @@ function Home() {
                                         <ActivityCard key={activity.id} activity={activity} />
                                     ))
                                 ) : (
-                                    <div className="bg-bg-card rounded-xl p-6 border border-white/5 text-center">
+                                    <div className="bg-bg-card rounded-xl p-6 text-center" style={{ border: '1px solid var(--border-color)' }}>
                                         <p className="text-text-tertiary text-sm">
-                                            {searchQuery ? 'No se encontraron actividades' : 'No activities for today'}
+                                            {searchQuery ? t('noResults', language) : t('noUpcomingActivities', language)}
                                         </p>
                                         {!isSearching && (
                                             <Link to="/planner" className="inline-flex items-center justify-center gap-2 py-2 px-3 rounded-xl font-medium text-sm bg-accent-gradient text-white shadow-card hover:shadow-card-md hover:scale-105 active:scale-95 mt-3 no-underline">
-                                                <Plus size={16} /> Add Activity
+                                                <Plus size={16} /> {t('addActivity', language)}
                                             </Link>
                                         )}
                                     </div>
@@ -228,22 +231,22 @@ function Home() {
                         {(!isSearching || hasPasswordResults) && (
                             <div>
                                 <div className="flex items-center justify-between mb-4">
-                                    <h2 className="text-lg font-bold">
-                                        {isSearching ? `Passwords (${displayPasswords.length})` : 'Password Vault'}
+                                    <h2 className="text-lg font-bold text-text-primary">
+                                        {isSearching ? `${t('passwords', language)} (${displayPasswords.length})` : t('passwords', language)}
                                     </h2>
                                     {!isSearching && (
                                         <Link to="/vault" className="text-sm text-accent-primary font-medium flex items-center gap-1 transition-colors duration-200 hover:text-accent-secondary no-underline">
-                                            See all <ChevronRight size={14} className="inline" />
+                                            {t('viewAll', language)} <ChevronRight size={14} className="inline" />
                                         </Link>
                                     )}
                                 </div>
 
                                 {!isSearching && (
-                                    <div className="bg-bg-card rounded-xl p-4 border border-white/5 mb-3">
+                                    <div className="bg-bg-card rounded-xl p-4 mb-3" style={{ border: '1px solid var(--border-color)' }}>
                                         <div className="flex items-center justify-between">
                                             <div>
-                                                <div className="text-sm text-text-tertiary">Stored Passwords</div>
-                                                <div className="text-2xl font-bold">{passwords.length}</div>
+                                                <div className="text-sm text-text-tertiary">{t('passwords', language)}</div>
+                                                <div className="text-2xl font-bold text-text-primary">{passwords.length}</div>
                                             </div>
                                             <div className="w-12 h-12 bg-accent-gradient rounded-xl flex items-center justify-center">
                                                 <Lock size={24} />
@@ -275,7 +278,7 @@ function Home() {
                         {!isSearching && (
                             <div>
                                 <div className="flex items-center justify-between mb-4">
-                                    <h2 className="text-lg font-bold">Notificaciones</h2>
+                                    <h2 className="text-lg font-bold text-text-primary">{t('notifications', language)}</h2>
                                 </div>
                                 <NotificationSettings />
                             </div>

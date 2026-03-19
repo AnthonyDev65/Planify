@@ -1,7 +1,12 @@
 import express from 'express';
 import cors from 'cors';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 import { initDatabase, subscriptionsDB, activitiesDB, passwordsDB, pushSubscriptionsDB } from './database.js';
 import { getVapidPublicKey, sendActivityReminder, sendPaymentReminder } from './notifications.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -9,6 +14,12 @@ const PORT = process.env.PORT || 3001;
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Servir archivos estáticos del frontend en producción
+if (process.env.NODE_ENV === 'production') {
+  const distPath = join(__dirname, '..', 'dist');
+  app.use(express.static(distPath));
+}
 
 // Initialize database
 initDatabase();
@@ -229,9 +240,17 @@ app.post('/api/notifications/test', async (req, res) => {
   }
 });
 
+// Servir el frontend para todas las rutas no API (SPA)
+if (process.env.NODE_ENV === 'production') {
+  app.get('*', (req, res) => {
+    res.sendFile(join(__dirname, '..', 'dist', 'index.html'));
+  });
+}
+
 // Start server
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
   console.log(`📊 Database: planify.db`);
   console.log(`🔔 Push notifications enabled`);
+  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
