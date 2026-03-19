@@ -36,6 +36,10 @@ COPY --from=builder /app/dist ./dist
 # Copiar el servidor
 COPY server ./server
 
+# Copiar script de inicio
+COPY start.sh ./start.sh
+RUN chmod +x start.sh
+
 # Crear directorio para la base de datos
 RUN mkdir -p /app/data
 
@@ -47,4 +51,4 @@ ENV NODE_ENV=production
 ENV PORT=3001
 
 # Comando de inicio
-CMD ["node", "server/index.js"]
+CMD ["./start.sh"]

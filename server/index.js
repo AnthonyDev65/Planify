@@ -2,11 +2,17 @@ import express from 'express';
 import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { existsSync } from 'fs';
 import { initDatabase, subscriptionsDB, activitiesDB, passwordsDB, pushSubscriptionsDB } from './database.js';
 import { getVapidPublicKey, sendActivityReminder, sendPaymentReminder } from './notifications.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+console.log('🔧 Server configuration:');
+console.log('  __dirname:', __dirname);
+console.log('  NODE_ENV:', process.env.NODE_ENV);
+console.log('  PORT:', process.env.PORT);
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -18,11 +24,26 @@ app.use(express.json());
 // Servir archivos estáticos del frontend en producción
 if (process.env.NODE_ENV === 'production') {
   const distPath = join(__dirname, '..', 'dist');
-  app.use(express.static(distPath));
+  console.log('📁 Dist path:', distPath);
+  console.log('📁 Dist exists:', existsSync(distPath));
+  
+  if (existsSync(distPath)) {
+    app.use(express.static(distPath));
+    console.log('✅ Serving static files from:', distPath);
+  } else {
+    console.error('❌ Dist folder not found at:', distPath);
+  }
 }
 
 // Initialize database
-initDatabase();
+console.log('🗄️ Initializing database...');
+try {
+  initDatabase();
+  console.log('✅ Database initialized successfully');
+} catch (error) {
+  console.error('❌ Database initialization failed:', error);
+  process.exit(1);
+}
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -249,8 +270,15 @@ if (process.env.NODE_ENV === 'production') {
 
 // Start server
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
-  console.log(`📊 Database: planify.db`);
-  console.log(`🔔 Push notifications enabled`);
-  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log('');
+  console.log('=================================');
+  console.log('🚀 Server running on http://0.0.0.0:${PORT}');
+  console.log('📊 Database: planify.db');
+  console.log('🔔 Push notifications enabled');
+  console.log('🌍 Environment: ${process.env.NODE_ENV || 'development'}');
+  console.log('=================================');
+  console.log('');
+}).on('error', (err) => {
+  console.error('❌ Server failed to start:', err);
+  process.exit(1);
 });
